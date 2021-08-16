@@ -74,6 +74,22 @@ func Output(o Outputter, sig string, dir string, lockDuration time.Duration, loc
 	return out, err
 }
 
+func Clear(sig string, dir string, lockDuration time.Duration, lockP func(name string) Locker) error {
+	sig = normalize(sig)
+	lock := lockP(sig)
+	if err := lock.Lock(lockDuration, "cache"); err != nil {
+		return err
+	}
+	defer func(lock Locker) {
+		_ = lock.UnLock()
+	}(lock)
+	outfile := cacheFile(dir, sig)
+	if !fileExist(outfile) {
+		return nil
+	}
+	return os.Remove(outfile)
+}
+
 func mkdirAllRetry(path string) (err error) {
 	for i := 0; i < mkdirAllMaxRetries; i++ {
 		if err = mkdirAll(path, 0700); err == nil {
