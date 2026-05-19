@@ -41,13 +41,15 @@ func Purge(cacheDir string) (err error) {
 // A lock object associated with 'sig' (created by function 'lockP') is used,
 //
 // When lock error:
-//   Returns o.Output() (no update cache).
+//
+//	Returns o.Output() (no update cache).
 //
 // When locked:
-//   returns found cache entry associated with 'sig' from 'cacheDir'.
-//   If entry is not present, it runs 'o.Output()'.
-//     In case of error during o.Output(), the error is returned and cache is not updated,
-//     else cache associated with 'sig' is updated and new cached value is returned.
+//
+//	returns found cache entry associated with 'sig' from 'cacheDir'.
+//	If entry is not present, it runs 'o.Output()'.
+//	  In case of error during o.Output(), the error is returned and cache is not updated,
+//	  else cache associated with 'sig' is updated and new cached value is returned.
 //
 // dir is created if absent, lockDuration is the maximum duration to wait for lock step.
 func Output(o Outputter, sig string, dir string, lockDuration time.Duration, lockP func(name string) Locker) (out []byte, err error) {
@@ -72,6 +74,24 @@ func Output(o Outputter, sig string, dir string, lockDuration time.Duration, loc
 	}
 	err = ioutil.WriteFile(outfile, out, 0600)
 	return out, err
+}
+
+// Age returns the duration between the cache file modification time and now.
+func Age(sig string, dir string, lockDuration time.Duration, lockP func(name string) Locker) (time.Duration, error) {
+	sig = normalize(sig)
+	lock := lockP(sig)
+	if err := lock.Lock(lockDuration, "cache"); err != nil {
+		return 0, err
+	}
+	defer func(lock Locker) {
+		_ = lock.UnLock()
+	}(lock)
+	outfile := cacheFile(dir, sig)
+	info, err := os.Stat(outfile)
+	if err != nil {
+		return 0, err
+	}
+	return time.Since(info.ModTime()), nil
 }
 
 func Clear(sig string, dir string, lockDuration time.Duration, lockP func(name string) Locker) error {
