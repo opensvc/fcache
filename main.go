@@ -72,7 +72,7 @@ func Output(o Outputter, sig string, dir string, lockDuration time.Duration, loc
 	if err != nil {
 		return nil, err
 	}
-	err = ioutil.WriteFile(outfile, out, 0600)
+	err = os.WriteFile(outfile, out, 0600)
 	return out, err
 }
 
